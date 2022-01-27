@@ -49,10 +49,5 @@
   "SDKVersion": 2,
   "Software": {
     "MinimumVersion": "4.3"
-  },
-  "ApplicationsToMonitor": {
-    "windows": [
-      "League of Legends.exe"
-    ]
   }
 }

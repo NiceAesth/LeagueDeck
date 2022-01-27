@@ -43,9 +43,6 @@ namespace LeagueDeck
 
             _info = LeagueInfo.GetInstance(_cts.Token);
 
-            Connection.OnApplicationDidLaunch += Connection_OnApplicationDidLaunch;
-            Connection.OnApplicationDidTerminate += Connection_OnApplicationDidTerminate;
-
             if (payload.Settings == null || payload.Settings.Count == 0)
                 this._settings = SpellTimerSettings.CreateDefaultSettings();
             else
@@ -64,20 +61,10 @@ namespace LeagueDeck
                     await Connection.SetTitleAsync(string.Empty);
                 });
             }
-        }
-
-        #endregion
-
-        #region Events
-
-        private async void Connection_OnApplicationDidLaunch(object sender, BarRaider.SdTools.Wrappers.SDEventReceivedEventArgs<BarRaider.SdTools.Events.ApplicationDidLaunch> e)
-        {
-            if (e.Event.Payload.Application != "League of Legends.exe")
-                return;
 
             Logger.Instance.LogMessage(TracingLevel.DEBUG, "GameStarted");
 
-            await Task.WhenAll(new[] { _info.LoadGameData(_cts.Token), _info.UpdateTask })
+            Task.WhenAll(new[] { _info.LoadGameData(_cts.Token), _info.UpdateTask })
                 .ContinueWith(async (x) =>
                 {
                     _isInGame = true;
@@ -85,22 +72,9 @@ namespace LeagueDeck
                 });
         }
 
-        private async void Connection_OnApplicationDidTerminate(object sender, BarRaider.SdTools.Wrappers.SDEventReceivedEventArgs<BarRaider.SdTools.Events.ApplicationDidTerminate> e)
-        {
-            if (e.Event.Payload.Application != "League of Legends.exe")
-                return;
+        #endregion
 
-            _isInGame = false;
-
-            await ResetTimer();
-
-            _info.ClearGameData();
-
-            _cts.Cancel();
-            _cts = new CancellationTokenSource();
-
-            await Connection.SetDefaultImageAsync();
-        }
+        #region Events
 
         private async void LeagueInfo_OnUpdateStarted(object sender, LeagueInfo.UpdateEventArgs e)
         {
@@ -238,12 +212,20 @@ namespace LeagueDeck
         {
             Logger.Instance.LogMessage(TracingLevel.DEBUG, $"Destructor called");
 
+            _isInGame = false;
+
+            ResetTimer().GetAwaiter().GetResult();
+
+            _info.ClearGameData();
+
+            _cts.Cancel();
+            _cts = new CancellationTokenSource();
+
+            Connection.SetDefaultImageAsync().GetAwaiter().GetResult();
+
             LeagueInfo.OnUpdateStarted -= LeagueInfo_OnUpdateStarted;
             LeagueInfo.OnUpdateProgress -= LeagueInfo_OnUpdateProgress;
             LeagueInfo.OnUpdateCompleted -= LeagueInfo_OnUpdateCompleted;
-
-            Connection.OnApplicationDidLaunch -= Connection_OnApplicationDidLaunch;
-            Connection.OnApplicationDidTerminate -= Connection_OnApplicationDidTerminate;
 
             _cts.Cancel();
             _cts.Dispose();
